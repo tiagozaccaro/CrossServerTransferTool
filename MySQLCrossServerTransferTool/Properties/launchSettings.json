@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "MySQLCrossServerTransferTool": {
+      "commandName": "Project",
+      "commandLineArgs": "--from \"server=192.168.200.141;port=33306;database=itaucred;Connection Lifetime=0;Pooling=false;Connection Timeout=999999; Encrypt=false;user=usr_tiago;pwd=t3d@S12ehd;\" --to \"server=192.168.200.134;port=33306;database=itaucred;Connection Lifetime=0;Pooling=false;Encrypt=false;Connection Timeout=999999;user=usr_tiago;pwd=t3d@S12ehd;\" --script \"Scripts\\Itaucred.sql\""
+    }
+  }
+}
