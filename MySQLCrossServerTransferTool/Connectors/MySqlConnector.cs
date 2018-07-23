@@ -93,7 +93,29 @@ namespace MySQLCrossServerTransferTool.Connectors
 
         public int ExecuteNonQuery(string sql, params IDbDataParameter[] parameters)
         {
-            return CreateCommand(sql, parameters).ExecuteNonQuery();
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+
+            Console.WriteLine(sql);
+
+            var rows = CreateCommand(sql, parameters).ExecuteNonQuery();
+
+            if (rows > 0)
+            {
+                Console.WriteLine($"Rows affected: {rows}");
+            }
+
+            watch.Stop();
+            TimeSpan t = TimeSpan.FromMilliseconds(watch.ElapsedMilliseconds);
+            string answer = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
+                                    t.Hours,
+                                    t.Minutes,
+                                    t.Seconds,
+                                    t.Milliseconds);
+
+            Console.WriteLine($"Execution Time Elapsed: {answer}");
+            Console.WriteLine();
+
+            return rows;
         }
 
         public void Copy(Table copy)
@@ -315,10 +337,14 @@ namespace MySQLCrossServerTransferTool.Connectors
         public IDataAdapter ReturnDataAdapter(string sql, params IDbDataParameter[] parameters)
         {
             var command = CreateCommand(sql, parameters);
-
             var da = new MySqlDataAdapter(command);
-
             return da;
+        }
+
+        public IDataReader ExecuteReader(string sql, params IDbDataParameter[] parameters)
+        {
+            var command = CreateCommand(sql, parameters);
+            return command.ExecuteReader();
         }
     }
 }

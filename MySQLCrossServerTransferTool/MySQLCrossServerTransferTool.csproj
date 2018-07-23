@@ -8,11 +8,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Scripts\BpCob.sql" />
     <None Remove="Scripts\Itaucred.sql" />
     <None Remove="Scripts\Pan.sql" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Scripts\BpCob.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Scripts\Itaucred.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
