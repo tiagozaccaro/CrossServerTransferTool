@@ -64,17 +64,35 @@ namespace MySQLCrossServerTransferTool.Parsers
 
         private void ExecuteScriptFile(MySqlConnector dbFrom, MySqlConnector dbTo)
         {
-            var scripts = File.ReadAllText(_scriptFile).Replace('\n', ' ').Replace('\r', ' ').Split(';');
+            var dbExecution = dbFrom;
+
+            var scripts = File.ReadAllText(_scriptFile).Split(';', StringSplitOptions.RemoveEmptyEntries);
 
             foreach (var script in scripts)
             {
-                if (script.Trim().Equals(string.Empty)) continue;
+                var line = script.Trim();
+                var lineUPPER = line.ToUpper();
 
-                if (script.Trim().ToUpper().StartsWith("SELECT"))
+                if (line.Equals(string.Empty)) continue;
+
+                if(lineUPPER.StartsWith("EXEC ON"))
+                {
+                    if (lineUPPER.Contains("FROMDB"))
+                    {
+                        dbExecution = dbFrom;
+                        Console.WriteLine($"Executing database changed to: FROMDB");
+                    }
+                    else if (lineUPPER.Contains("TODB"))
+                    {
+                        dbExecution = dbTo;
+                        Console.WriteLine($"Executing database changed to: TODB");
+                    }                    
+                }
+                else if (lineUPPER.StartsWith("SELECT"))
                 {
                     var watch = System.Diagnostics.Stopwatch.StartNew();
 
-                    var table = dbFrom.GetTable(script);
+                    var table = dbExecution.GetTable(line);
                     dbTo.Copy(table);
 
                     watch.Stop();
@@ -87,35 +105,17 @@ namespace MySQLCrossServerTransferTool.Parsers
 
                     Console.WriteLine($"Execution Time Elapsed: {answer}");
                     Console.WriteLine();
-                }
-                else if (script.Trim().ToUpper().StartsWith("DELETE") || script.Trim().ToUpper().StartsWith("TRUNCATE"))
+                }                    
+                else if(lineUPPER.Contains("PRINT"))
                 {
-                    var watch = System.Diagnostics.Stopwatch.StartNew();
-
-                    Console.WriteLine("Deleting content from table...");
-                    dbTo.ExecuteNonQuery(script);
-
-                    watch.Stop();
-                    TimeSpan t = TimeSpan.FromMilliseconds(watch.ElapsedMilliseconds);
-                    string answer = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
-                                            t.Hours,
-                                            t.Minutes,
-                                            t.Seconds,
-                                            t.Milliseconds);
-
-                    Console.WriteLine($"Execution Time Elapsed: {answer}");
-                    Console.WriteLine();
-                }          
-                else if(script.Trim().ToUpper().Contains("PRINT"))
-                {
-                    Console.WriteLine(script.Substring(script.IndexOf("\"") + 1, script.LastIndexOf("\"") - (script.IndexOf("\"") + 1)).Trim());
+                    Console.WriteLine(line.Substring(line.IndexOf("\"") + 1, line.LastIndexOf("\"") - (line.IndexOf("\"") + 1)).Trim());
                 }
                 else
                 {
                     var watch = System.Diagnostics.Stopwatch.StartNew();
 
-                    Console.WriteLine(script.Trim());
-                    var rows = dbFrom.ExecuteNonQuery(script);
+                    Console.WriteLine(line);
+                    var rows = dbExecution.ExecuteNonQuery(line);
 
                     if (rows > 0)
                     {

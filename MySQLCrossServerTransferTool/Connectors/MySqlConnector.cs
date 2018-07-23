@@ -100,6 +100,8 @@ namespace MySQLCrossServerTransferTool.Connectors
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
+            CheckTable(copy);
+
             var dbFromSelectCommand = copy.SelectCommand;
             dbFromSelectCommand.CommandText += " LIMIT @page, @limit;";
             dbFromSelectCommand.Parameters.Add(new MySqlParameter("@page", MySqlDbType.Int32));
@@ -134,7 +136,7 @@ namespace MySQLCrossServerTransferTool.Connectors
                         if (insert == string.Empty)
                         {
                             insert = $"Insert Into {dt.TableName} ({String.Join(",", dt.Columns.Cast<DataColumn>().Select(c => $"`{c.ColumnName}`").ToArray())}) Values ({String.Join(",", dt.Columns.Cast<DataColumn>().Select(c => $"@{c.ColumnName}").ToArray())}) ON DUPLICATE KEY UPDATE {String.Join(",", dt.Columns.Cast<DataColumn>().Select(c => $"`{c.ColumnName}` = Values({c.ColumnName})").ToArray())};";
-                            cmdInsert = CreateCommand(insert, copy.Parameters);
+                            cmdInsert = CreateCommand(insert, copy.GetParameters());
                             cmdInsert.Prepare();
                         }
 
@@ -233,23 +235,42 @@ namespace MySQLCrossServerTransferTool.Connectors
             }
         }
 
+        private void CheckTable(Table table)
+        {
+            var tableCompare = GetTable($"SELECT * FROM {table.TableName} LIMIT 1");
+
+            for(var x = 0; x < table.Columns.Count(); x++)
+            {
+                if (!table.Columns[x].Equals(tableCompare.Columns[x]))
+                {
+                    using (var dropTableCommand = CreateCommand($"DROP TABLE IF EXISTS {tableCompare.TableName};"))
+                    {
+                        dropTableCommand.ExecuteNonQuery();
+                    }
+
+                    var createCommand = table.CreateCommand;
+                    createCommand.Connection = _dbConnection;
+                    createCommand.ExecuteNonQuery();
+                    break;
+                }
+            }
+        }
+
         public Table GetTable(string sqlSelect, params IDbDataParameter[] parameters)
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
-            var command = CreateCommand(sqlSelect, parameters);
+            var selectCommand = CreateCommand(sqlSelect, parameters);
 
             var dtSchema = new DataTable();
 
-            using (var dr = command.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+            using (var dr = selectCommand.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
             {
                 dtSchema = dr.GetSchemaTable();
             }
 
             using (dtSchema)
             {
-                var parametersInsert = new List<MySqlParameter>();
-
                 string tableName = string.Empty;
                 
                 if (dtSchema.Rows.Count > 0)
@@ -257,12 +278,25 @@ namespace MySQLCrossServerTransferTool.Connectors
                     tableName = dtSchema.Rows[0]["BaseTableName"].ToString();
                 }
 
-                foreach (DataRow row in dtSchema.Rows)
-                {
-                    parametersInsert.Add(new MySqlParameter(row["ColumnName"].ToString(), (MySqlDbType)row["ProviderType"]));
+                MySqlCommand createCommand = null;
+
+                using (var showCreateCommand = CreateCommand($"SHOW CREATE TABLE {tableName};"))
+                {                    
+                    using (var dr = showCreateCommand.ExecuteReader())
+                    {
+                        using (var dt = new DataTable())
+                        {
+                            dt.Load(dr);
+
+                            if (dt.Rows.Count > 0)
+                            {
+                                createCommand = CreateCommand((string)dt.Rows[0][1]);
+                            }
+                        }
+                    }
                 }
 
-                var table = new Table(tableName, command, parametersInsert.ToArray());
+                var table = new Table(tableName, selectCommand, createCommand, dtSchema.Rows);
 
                 watch.Stop();
                 TimeSpan t = TimeSpan.FromMilliseconds(watch.ElapsedMilliseconds);
