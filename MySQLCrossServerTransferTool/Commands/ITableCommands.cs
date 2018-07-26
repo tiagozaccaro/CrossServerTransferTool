@@ -1,0 +1,21 @@
+﻿using MySQLCrossServerTransferTool.Models;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Text;
+
+namespace MySQLCrossServerTransferTool.Commands
+{
+    public interface ITableCommands
+    {
+        IDbCommand CreateTableCommand();
+        IDbCommand DropTableCommand();
+        IDbCommand TruncateTableCommand();
+        IDbCommand SelectCommand();
+        IDbCommand SelectCommand(int limit);
+        IDbCommand SelectCommand(int start, int limit);
+        IDbCommand InsertCommand();
+        IDbCommand UpdateCommand();
+        IDbCommand DeleteCommand();
+    }
+}

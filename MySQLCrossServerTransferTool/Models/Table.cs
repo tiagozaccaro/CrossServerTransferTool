@@ -1,22 +1,20 @@
-﻿using MySql.Data.MySqlClient;
-using System.Linq;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Text;
+using System.Data.Common;
+using MySQLCrossServerTransferTool.Commands;
+using MySQLCrossServerTransferTool.Connectors;
 
 namespace MySQLCrossServerTransferTool.Models
 {
-    public class Table
+    public abstract class Table : ITableCommands
     {
-        public IDbCommand SelectCommand { get; private set; }
-        public IDbCommand CreateCommand { get; private set; }
         public string TableName { get; set; }
         public Column[] Columns { get; set; }
+        public IConnector Connector { get; set; }
         
-        public Table(string tableName, IDbCommand selectCommand, IDbCommand createCommand, DataRowCollection rows)
-        {
-            SelectCommand = selectCommand;
-            CreateCommand = createCommand;
+        public Table(string tableName, DataRowCollection rows, IConnector connector)
+        {            
             TableName = tableName;
 
             var columns = new Column[rows.Count];
@@ -27,11 +25,31 @@ namespace MySQLCrossServerTransferTool.Models
             }
 
             Columns = columns;
+
+            Connector = connector;
         }
 
-        public MySqlParameter[] GetParameters()
+        public abstract DbParameter[] GetParameters();
+        public abstract IDbCommand CreateTableCommand();
+        public abstract IDbCommand DropTableCommand();
+        public abstract IDbCommand TruncateTableCommand();
+        public abstract IDbCommand SelectCommand();
+        public abstract IDbCommand SelectCommand(int limit);
+        public abstract IDbCommand SelectCommand(int start, int limit);
+        public abstract IDbCommand InsertCommand();
+        public abstract IDbCommand UpdateCommand();
+        public abstract IDbCommand DeleteCommand();
+
+        public override bool Equals(object obj)
         {
-            return Columns.Select(c => new MySqlParameter(c.Name, (MySqlDbType)c.ProviderType)).ToArray();
+            return obj is Table table &&
+                   TableName == table.TableName &&
+                   EqualityComparer<Column[]>.Default.Equals(Columns, table.Columns);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(TableName, Columns);
         }
     }
 }

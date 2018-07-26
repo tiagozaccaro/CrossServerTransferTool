@@ -1,37 +1,32 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
 using System.IO;
-using System.Threading;
-using MySql.Data.MySqlClient;
+using Microsoft.Extensions.Logging;
 using MySQLCrossServerTransferTool.Connectors;
+using MySQLCrossServerTransferTool.Converters;
 using MySQLCrossServerTransferTool.Models;
 
 namespace MySQLCrossServerTransferTool.Parsers
 {
-    public class MySqlScriptParser
+    public class MySqlScriptParser : IScriptParser
     {
-        private readonly string _dbFromConnectionString;
-        private readonly string _dbToConnectionString;
-        private readonly string _scriptFile;
-
-        public MySqlScriptParser(string dbFromConnectionString, string dbToConnectionString, string scriptFile)
+        private readonly ProgramOptions _options;
+        private readonly ILogger _logger;
+        
+        public MySqlScriptParser(ProgramOptions options, ILogger logger)
         {
-            _dbFromConnectionString = dbFromConnectionString;
-            _dbToConnectionString = dbToConnectionString;
-            _scriptFile = scriptFile;
+            _options = options;
+            _logger = logger;
         }
-
+        
         public void ExecuteScript()
         {
-            Console.WriteLine("MySQL Cross Server Transfer Tool 1.0.1");
-            Console.WriteLine("Start Copying Data...");
-            Console.WriteLine($"Script Name: {Path.GetFileName(_scriptFile)}");
-            Console.WriteLine();
+            _logger.LogInformation("Start Copying Data...");
+            _logger.LogInformation($"Script Name: {Path.GetFileName(_options.ScriptFile)}");
 
-            using (var dbFrom = new MySqlConnector(_dbFromConnectionString))
+            using (var dbFrom = new MySqlConnector(_options.FromConnectionString, _logger))
             {
-                using (var dbTo = new MySqlConnector(_dbToConnectionString))
+                using (var dbTo = new MySqlConnector(_options.ToConnectionString, _logger))
                 {
                     try
                     {
@@ -40,7 +35,7 @@ namespace MySQLCrossServerTransferTool.Parsers
                         dbFrom.Open();
                         dbTo.Open();
 
-                        this.ExecuteScriptFile(dbFrom, dbTo);
+                        ExecuteScriptFile(dbFrom, dbTo);
                         
                         // the code that you want to measure comes here
                         watch.Stop();
@@ -51,26 +46,22 @@ namespace MySQLCrossServerTransferTool.Parsers
                                                 t.Seconds,
                                                 t.Milliseconds);
 
-                        Console.WriteLine($"Time Elapsed: {answer}");
+                        _logger.LogDebug($"Time Elapsed: {answer}");
                     }
                     catch (Exception ex)
                     {                        
-                        Console.WriteLine(ex.ToString());
-                        Console.WriteLine(String.Empty);
+                        _logger.LogError(ex, "Error on the execution.");
+                        Console.ReadKey();
                     }
                 }
             }
-
-            Console.WriteLine("Finished.");
-
-            Console.ReadKey();
         }
 
         private void ExecuteScriptFile(MySqlConnector dbFrom, MySqlConnector dbTo)
         {
             var dbExecution = dbFrom;
 
-            var scripts = File.ReadAllText(_scriptFile).Split(';', StringSplitOptions.RemoveEmptyEntries);
+            var scripts = File.ReadAllText(_options.ScriptFile).Split(';', StringSplitOptions.RemoveEmptyEntries);
 
             foreach (var script in scripts)
             {
@@ -86,7 +77,7 @@ namespace MySQLCrossServerTransferTool.Parsers
                     switch(method.Name)
                     {
                         case "PRINT":
-                            Console.WriteLine(method.Parameters[0].Replace("\'", "").Replace("\"", ""));
+                            _logger.LogInformation(method.Parameters[0].Replace("\'", "").Replace("\"", ""));
 
                             continue;
                         case "EXECON":
@@ -94,11 +85,11 @@ namespace MySQLCrossServerTransferTool.Parsers
                             {
                                 case "'FROMDB'":
                                     dbExecution = dbFrom;
-                                    Console.WriteLine($"Executing database changed to: FROMDB");
+                                    _logger.LogInformation($"Executing database changed to: FROMDB");
                                     break;
                                 case "'TODB'":
                                     dbExecution = dbTo;
-                                    Console.WriteLine($"Executing database changed to: TODB");
+                                    _logger.LogInformation($"Executing database changed to: TODB");
                                     break;
                             }
 
@@ -126,9 +117,11 @@ namespace MySQLCrossServerTransferTool.Parsers
                 {
                     var watch = System.Diagnostics.Stopwatch.StartNew();
 
-                    var table = dbExecution.GetTable(line);
-                    dbTo.Copy(table);
-
+                    var converter = new MySqlConverter(_logger);
+                    var from = dbExecution.GetTable(line);
+                    var to = dbTo.GetTable(from.SelectCommand());
+                    converter.Convert(from, to);
+                    
                     watch.Stop();
                     TimeSpan t = TimeSpan.FromMilliseconds(watch.ElapsedMilliseconds);
                     string answer = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
@@ -137,12 +130,10 @@ namespace MySQLCrossServerTransferTool.Parsers
                                             t.Seconds,
                                             t.Milliseconds);
 
-                    Console.WriteLine($"Execution Time Elapsed: {answer}");
-                    Console.WriteLine();
+                    _logger.LogInformation($"Execution Time Elapsed: {answer}");
                 }  
                 else
-                {
-                    
+                {                    
                     var rows = dbExecution.ExecuteNonQuery(line);                    
                 }
             }

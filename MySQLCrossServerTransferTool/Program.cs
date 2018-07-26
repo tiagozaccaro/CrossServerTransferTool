@@ -1,4 +1,10 @@
-﻿using MySQLCrossServerTransferTool.Parsers;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using MySQLCrossServerTransferTool.Connectors;
+using MySQLCrossServerTransferTool.Converters;
+using MySQLCrossServerTransferTool.Factories;
+using MySQLCrossServerTransferTool.Models;
+using MySQLCrossServerTransferTool.Parsers;
 using System;
 using System.IO;
 using System.Text;
@@ -7,13 +13,52 @@ namespace MySQLCrossServerTransferTool
 {
     class Program
     {
-        private static string _dbFromConnectionString;
-        private static string _dbToConnectionString;
-        private static string _scriptFile;
-        private static string _engine;
+        public static ServiceProvider ServiceProvider { get; set; }
+
+        private static ILogger _logger;
 
         static void Main(string[] args)
         {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+            var options = ProcessArguments(args);
+
+            var serviceCollection = new ServiceCollection();
+            ConfigureServices(serviceCollection, options);
+            ServiceProvider = serviceCollection.BuildServiceProvider();
+                        
+            _logger = ServiceProvider.GetService<ILoggerFactory>()
+                .CreateLogger<Program>();
+
+            _logger.LogInformation("MySQL Cross Server Transfer Tool 1.0.2");
+
+            var scriptParser = ServiceProvider.GetService<ScriptParserFactory>().GetInstance(_logger);
+            scriptParser.ExecuteScript();
+
+            _logger.LogInformation("All done!");                        
+        }
+
+        private static void ConfigureServices(IServiceCollection serviceCollection, ProgramOptions options)
+        {
+            //setup our DI
+            serviceCollection.AddSingleton(new LoggerFactory()
+                .AddConsole(LogLevel.Information));
+
+            serviceCollection.AddSingleton(options);
+
+            serviceCollection.AddTransient<ScriptParserFactory>();
+            serviceCollection.AddTransient<IScriptParser, MySqlScriptParser>();
+            serviceCollection.AddTransient<IConnector, MySqlConnector>();
+            serviceCollection.AddTransient<Table, MySqlTable>();
+            serviceCollection.AddTransient<IConverter, MySqlConverter>();
+
+            serviceCollection.AddLogging(); 
+        }
+
+        private static ProgramOptions ProcessArguments(string[] args)
+        {
+            var programOptions = new ProgramOptions();
+
             for (var x = 0; x < args.Length; x++)
             {
                 var argument = string.Empty;
@@ -25,18 +70,17 @@ namespace MySQLCrossServerTransferTool
 
                         if (argument == null)
                         {
-                            Console.WriteLine("From parameter does not have a connection string.");
+                            _logger.LogCritical("From parameter does not have a connection string.");
                             Environment.Exit(-1);
                         }
 
                         try
                         {
-                            _dbFromConnectionString = argument;
+                            programOptions.FromConnectionString = argument;
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine("From parameter does not have a connection string.");
-                            Console.WriteLine(ex.ToString());
+                            _logger.LogError("From parameter does not have a connection string.", ex);
                             Environment.Exit(-1);
                         }
                         break;
@@ -46,17 +90,17 @@ namespace MySQLCrossServerTransferTool
 
                         if (argument == null)
                         {
-                            Console.WriteLine("To parameter does not have a connection string.");
+                            _logger.LogCritical("To parameter does not have a connection string.");
                             Environment.Exit(-1);
                         }
 
                         try
                         {
-                            _dbToConnectionString = argument;
-                        } catch(Exception ex)
+                            programOptions.ToConnectionString = argument;
+                        }
+                        catch (Exception ex)
                         {
-                            Console.WriteLine("To parameter does not have a connection string.");
-                            Console.WriteLine(ex.ToString());
+                            _logger.LogError("To parameter does not have a connection string.", ex);
                             Environment.Exit(-1);
                         }
                         break;
@@ -66,18 +110,17 @@ namespace MySQLCrossServerTransferTool
 
                         if (argument == null)
                         {
-                            Console.WriteLine("Script does not have a valid script file.");
+                            _logger.LogCritical("Script does not have a valid script file.");
                             Environment.Exit(-1);
                         }
 
-                        _scriptFile = argument;
-
-                        if (!File.Exists(_scriptFile) || Path.GetExtension(_scriptFile).ToLower() == "sql")
+                        if (!File.Exists(argument) || Path.GetExtension(argument).ToLower() == "sql")
                         {
-                            Console.WriteLine("Script does not exist or is not a script.");
+                            _logger.LogCritical("Script does not exist or is not a script.");
                             Environment.Exit(-1);
                         }
 
+                        programOptions.ScriptFile = argument;
                         break;
 
                     case "--engine":
@@ -85,22 +128,21 @@ namespace MySQLCrossServerTransferTool
 
                         if (argument == null)
                         {
-                            Console.WriteLine("Engine not informed.");
+                            _logger.LogCritical("Engine not informed.");
                             Environment.Exit(-1);
                         }
 
-                        _engine = argument;
-
-                        switch(_engine)
+                        switch (argument)
                         {
                             case "MySql":
                                 break;
                             default:
-                                Console.WriteLine("Engine not supported.");
+                                _logger.LogCritical("Engine not supported.");
                                 Environment.Exit(-1);
                                 break;
                         }
 
+                        programOptions.Engine = argument;
                         break;
 
                     default:
@@ -108,10 +150,7 @@ namespace MySQLCrossServerTransferTool
                 }
             }
 
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-
-            var scriptParser = new MySqlScriptParser(_dbFromConnectionString, _dbToConnectionString, _scriptFile);
-            scriptParser.ExecuteScript();
+            return programOptions;
         }
 
         private static string GetNextArgument(string[] args, int x)

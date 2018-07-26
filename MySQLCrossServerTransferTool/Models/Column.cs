@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Text;
 
 namespace MySQLCrossServerTransferTool.Models
 {
@@ -96,7 +95,7 @@ namespace MySQLCrossServerTransferTool.Models
         public string BaseColumnName { get; set; }
         public string BaseSchemaName { get; set; }
         public string BaseTableName { get; set; }
-        public System.Type DataType { get; set; }
+        public Type DataType { get; set; }
         public bool? AllowDBNull { get; set; }
         public int? ProviderType { get; set; }
         public bool? IsAliased { get; set; }
@@ -110,9 +109,15 @@ namespace MySQLCrossServerTransferTool.Models
 
         public override bool Equals(object obj)
         {
-            var cmp = (Column)obj;
+            return obj is Column column &&
+                   Name == column.Name &&
+                   BaseTableName == column.BaseTableName &&
+                   EqualityComparer<int?>.Default.Equals(ProviderType, column.ProviderType);
+        }
 
-            return cmp.BaseTableName.Equals(BaseTableName) && cmp.ProviderType.Equals(ProviderType) && cmp.Name.Equals(Name);
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(BaseTableName, ProviderType, Name);
         }
     }
 }
