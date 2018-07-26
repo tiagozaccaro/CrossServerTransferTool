@@ -58,7 +58,6 @@ SELECT c.* FROM `cadcontrato` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContra
 SELECT c.* FROM `cadcontratoacordorecovery` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 SELECT c.* FROM `cadcontratoativos` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 SELECT c.* FROM `cadcontratobradescocomercial` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
-SELECT c.* FROM `cadcontratobradescoconsorcio` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 SELECT c.* FROM `cadcontratobradescovarejo` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 SELECT c.* FROM `cadcontratocetelem` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 SELECT c.* FROM `cadcontratofidelizado` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);

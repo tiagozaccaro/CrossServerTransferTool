@@ -117,10 +117,8 @@ namespace MySQLCrossServerTransferTool.Parsers
                 {
                     var watch = System.Diagnostics.Stopwatch.StartNew();
 
-                    var converter = new MySqlConverter(_logger);
-                    var from = dbExecution.GetTable(line);
-                    var to = dbTo.GetTable(from.SelectCommand());
-                    converter.Convert(from, to);
+                    var converter = new MySqlConverter(dbFrom, dbTo, _logger);
+                    converter.Convert(line);
                     
                     watch.Stop();
                     TimeSpan t = TimeSpan.FromMilliseconds(watch.ElapsedMilliseconds);

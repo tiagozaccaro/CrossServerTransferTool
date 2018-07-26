@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Data;
 using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
+using MySQLCrossServerTransferTool.Connectors;
 using MySQLCrossServerTransferTool.Extensions;
 using MySQLCrossServerTransferTool.Models;
 
@@ -10,102 +10,69 @@ namespace MySQLCrossServerTransferTool.Converters
     public class MySqlConverter : IConverter
     {
         private readonly int _queryLimit = 1000;
+        private readonly IConnector _dbFrom;
+        private readonly IConnector _dbTo;
         private ILogger _logger;
 
-        public MySqlConverter(ILogger logger)
+        public MySqlConverter(IConnector dbFrom, IConnector dbTo, ILogger logger)
         {
+            _dbFrom = dbFrom;
+            _dbTo = dbTo;
             _logger = logger;
         }
 
-        public void Convert(Table from, Table to)
+        public void Convert(string Sql)
         {
             try
             {
                 var watch = System.Diagnostics.Stopwatch.StartNew();
 
-                if (!to.Equals(from))
+                using (var from = new MySqlTable(Sql, _dbFrom, true))
                 {
-                    to.DropTableCommand().ExecuteNonQuery();
-                    var createCommand = from.CreateTableCommand();
-                    createCommand.Connection = to.Connector.GetConnection();
-                    createCommand.ExecuteNonQuery();
-                }
-
-                int pag = 0;
-
-                using (var insertCommand = from.InsertCommand())
-                {
-                    insertCommand.Connection = to.Connector.GetConnection();
-
-                    do
+                    var to = new MySqlTable(from.TableName, _dbTo, false);
+                    if (!to.Equals(from))
                     {
-                        var watchPag = System.Diagnostics.Stopwatch.StartNew();
+                        to.DropTableCommand().ExecuteNonQuery();
+                        var createCommand = from.CreateTableCommand();
+                        createCommand.Connection = to.Connector.GetConnection();
+                        createCommand.ExecuteNonQuery();
+                        to.Dispose();
+                        to = new MySqlTable(from.TableName, _dbTo, false);
+                    }
 
-                        using (var dr = from.SelectCommand(pag * _queryLimit, _queryLimit).ExecuteReader())
+                    using (var insertCommand = to.InsertCommand(true))
+                    {   
+                        _logger.LogInformation($"{from.TableName}");
+
+                        try
                         {
-                            using (var dt = new DataTable())
+                            to.Connector.BeginTransaction();
+
+                            for (int x = 0; x < from.DataTable.Rows.Count; x++)
                             {
-                                dt.Load(dr);
-
-                                if (dt.Rows.Count == 0)
+                                if (from.DataTable.Rows[x].ItemArray.Length == insertCommand.Parameters.Count)
                                 {
-                                    break;
-                                }
-
-                                _logger.LogInformation($"{dt.TableName} Page: {pag + 1}");
-
-                                try
-                                {
-                                    to.Connector.BeginTransaction();
-
-                                    int prg = 1;
-
-                                    try
+                                    for (var y = 0; y < from.DataTable.Rows[x].ItemArray.Length; y++)
                                     {
-                                        foreach (DataRow row in dt.Rows)
-                                        {
-                                            if (row.ItemArray.Length == insertCommand.Parameters.Count)
-                                            {
-                                                for (var x = 0; x < row.ItemArray.Length; x++)
-                                                {
-                                                    ((MySqlParameter)insertCommand.Parameters[x]).Value = row.ItemArray[x];
-                                                }
-
-                                                ConsoleHelper.DrawTextProgressBar(prg++, dt.Rows.Count);
-
-                                                insertCommand.ExecuteNonQuery();
-                                            }
-                                        }
-                                    } catch(Exception ex)
-                                    {
-                                        throw ex;
+                                        ((MySqlParameter)insertCommand.Parameters[y]).Value = from.DataTable.Rows[x].ItemArray[y];
                                     }
 
-                                    Console.WriteLine();
+                                    ConsoleHelper.DrawTextProgressBar(x + 1, from.DataTable.Rows.Count);
 
-                                    to.Connector.CommitTransaction();
-                                }
-                                catch (Exception ex)
-                                {
-                                    to.Connector.RollbackTransaction();
-
-                                    throw new Exception($"Exception on insert into TO Database on Table: {from.TableName}", ex);
+                                    insertCommand.ExecuteNonQuery();
                                 }
                             }
+
+                            to.Connector.CommitTransaction();
                         }
+                        catch (Exception ex)
+                        {
+                            to.Connector.RollbackTransaction();
+                            throw new Exception($"Exception on insert into TO Database on Table: {from.TableName}", ex);
+                        }                         
+                    }
 
-                        watchPag.Stop();
-                        TimeSpan tpag = TimeSpan.FromMilliseconds(watchPag.ElapsedMilliseconds);
-                        string answerPag = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
-                                                tpag.Hours,
-                                                tpag.Minutes,
-                                                tpag.Seconds,
-                                                tpag.Milliseconds);
-
-                        _logger.LogInformation($"Page Elapsed: {answerPag}");
-
-                        pag++;
-                    } while (true);
+                    to.Dispose();
                 }
 
                 watch.Stop();

@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Linq;
 using System.Data;
 using System.Data.Common;
 using MySQLCrossServerTransferTool.Commands;
@@ -7,16 +7,58 @@ using MySQLCrossServerTransferTool.Connectors;
 
 namespace MySQLCrossServerTransferTool.Models
 {
-    public abstract class Table : ITableCommands
+    public abstract class Table : ITableCommands, IDisposable, IEquatable<Table>
     {
         public string TableName { get; set; }
         public Column[] Columns { get; set; }
         public IConnector Connector { get; set; }
-        
-        public Table(string tableName, DataRowCollection rows, IConnector connector)
-        {            
-            TableName = tableName;
+        public DataTable DataTable { get; set; }
 
+        public Table(string sql, IConnector connector, bool IsSql)
+        {
+            Connector = connector;
+            IDbCommand selectCommand;
+            if (IsSql)
+            {
+                selectCommand = Connector.BuildCommand(sql);
+            } else
+            {
+                TableName = sql;
+                selectCommand = SelectCommand();
+            }
+            GetTableInfo(selectCommand);
+        }
+
+        public Table(string tableName)
+        {
+            TableName = tableName;
+            GetTableInfo(SelectCommand());
+        }
+
+        private void GetTableInfo(IDbCommand command)
+        {
+            var dtSchema = new DataTable();
+
+            using (var dr = command.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+            {
+                dtSchema = dr.GetSchemaTable();
+            }
+
+            using (dtSchema)
+            {
+                if (dtSchema.Rows.Count > 0)
+                {
+                    TableName = dtSchema.Rows[0]["BaseTableName"].ToString();
+                    Columns = ConvertToColumns(dtSchema.Rows);
+                    LoadData(command);
+                }
+            }
+        }
+
+        public abstract void LoadData(IDbCommand command);
+
+        private Column[] ConvertToColumns(DataRowCollection rows)
+        {
             var columns = new Column[rows.Count];
 
             for (var x = 0; x < rows.Count; x++)
@@ -24,9 +66,7 @@ namespace MySQLCrossServerTransferTool.Models
                 columns[x] = new Column(rows[x]);
             }
 
-            Columns = columns;
-
-            Connector = connector;
+            return columns;
         }
 
         public abstract DbParameter[] GetParameters();
@@ -36,20 +76,21 @@ namespace MySQLCrossServerTransferTool.Models
         public abstract IDbCommand SelectCommand();
         public abstract IDbCommand SelectCommand(int limit);
         public abstract IDbCommand SelectCommand(int start, int limit);
-        public abstract IDbCommand InsertCommand();
+        public abstract IDbCommand InsertCommand(bool onDuplicateUpdate = false);
         public abstract IDbCommand UpdateCommand();
-        public abstract IDbCommand DeleteCommand();
+        public abstract IDbCommand DeleteCommand();        
+        public abstract IDbCommand CountCommand();
+        public abstract IDbCommand CreateTemporaryTableCommand();
+        public abstract IDbCommand DropTemporaryTableCommand();
 
-        public override bool Equals(object obj)
+        public void Dispose()
         {
-            return obj is Table table &&
-                   TableName == table.TableName &&
-                   EqualityComparer<Column[]>.Default.Equals(Columns, table.Columns);
+            DataTable.Dispose();
         }
 
-        public override int GetHashCode()
+        public bool Equals(Table other)
         {
-            return HashCode.Combine(TableName, Columns);
+            return TableName == other.TableName && Enumerable.SequenceEqual(Columns, other.Columns);                   
         }
     }
 }

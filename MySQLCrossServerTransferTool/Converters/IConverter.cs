@@ -5,6 +5,6 @@ namespace MySQLCrossServerTransferTool.Converters
 {
     public interface IConverter
     {
-        void Convert(Table from, Table to);         
+        void Convert(string Sql);         
     }
 }

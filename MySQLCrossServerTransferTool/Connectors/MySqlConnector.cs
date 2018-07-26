@@ -175,45 +175,5 @@ namespace MySQLCrossServerTransferTool.Connectors
         {
             return _dbConnection;
         }
-
-        public Table GetTable(string sql, params IDbDataParameter[] parameters)
-        {
-            return GetTable(BuildCommand(sql, parameters));
-        }
-
-        public Table GetTable(IDbCommand command)
-        {
-            var watch = System.Diagnostics.Stopwatch.StartNew();
-
-            var dtSchema = new DataTable();
-
-            using (var dr = command.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
-            {
-                dtSchema = dr.GetSchemaTable();
-            }
-
-            using (dtSchema)
-            {
-                string tableName = string.Empty;
-
-                if (dtSchema.Rows.Count > 0)
-                {
-                    tableName = dtSchema.Rows[0]["BaseTableName"].ToString();
-                }
-
-                var table = new MySqlTable(tableName, dtSchema.Rows, this);
-
-                watch.Stop();
-                TimeSpan t = TimeSpan.FromMilliseconds(watch.ElapsedMilliseconds);
-                string answer = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
-                                        t.Hours,
-                                        t.Minutes,
-                                        t.Seconds,
-                                        t.Milliseconds);
-
-                _logger.LogInformation($"Get Table Elapsed: {answer}");
-                return table;
-            }
-        }
     }
 }

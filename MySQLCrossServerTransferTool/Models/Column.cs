@@ -4,7 +4,7 @@ using System.Data;
 
 namespace MySQLCrossServerTransferTool.Models
 {
-    public class Column
+    public class Column : IEquatable<Column>
     {        
         public Column(DataRow dataRow)
         {
@@ -106,18 +106,12 @@ namespace MySQLCrossServerTransferTool.Models
         public bool? IsHidden { get; set; }
         public bool? IsLong { get; set; }
         public bool? IsReadOnly { get; set; }
-
-        public override bool Equals(object obj)
+        
+        public bool Equals(Column other)
         {
-            return obj is Column column &&
-                   Name == column.Name &&
-                   BaseTableName == column.BaseTableName &&
-                   EqualityComparer<int?>.Default.Equals(ProviderType, column.ProviderType);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(BaseTableName, ProviderType, Name);
+            return Name == other.Name &&
+                   BaseTableName == other.BaseTableName &&
+                   ProviderType.Equals(other.ProviderType);
         }
     }
 }

@@ -14,8 +14,11 @@ namespace MySQLCrossServerTransferTool.Commands
         IDbCommand SelectCommand();
         IDbCommand SelectCommand(int limit);
         IDbCommand SelectCommand(int start, int limit);
-        IDbCommand InsertCommand();
+        IDbCommand InsertCommand(bool onDuplicateUpdate = false);
         IDbCommand UpdateCommand();
         IDbCommand DeleteCommand();
+        IDbCommand CountCommand();
+        IDbCommand CreateTemporaryTableCommand();
+        IDbCommand DropTemporaryTableCommand();
     }
 }

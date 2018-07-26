@@ -8,10 +8,9 @@ using System;
 namespace MySQLCrossServerTransferTool.Models
 {
     public class MySqlTable : Table
-    {
-        public MySqlTable(string tableName, DataRowCollection rows, IConnector connector) : base(tableName, rows, connector)
+    {        
+        public MySqlTable(string sql, IConnector connector, bool IsSql) : base(sql, connector, IsSql)
         {
-
         }
 
         public override IDbCommand CreateTableCommand()
@@ -61,9 +60,16 @@ namespace MySQLCrossServerTransferTool.Models
             return selectCommand;
         }
 
-        public override IDbCommand InsertCommand()
+        public override IDbCommand InsertCommand(bool onDuplicateUpdate = false)
         {
-            var insert = $"Insert Into {TableName} ({String.Join(",", Columns.Select(c => $"`{c.Name}`").ToArray())}) Values ({String.Join(",", Columns.Select(c => $"@{c.Name}").ToArray())}) ON DUPLICATE KEY UPDATE {String.Join(",", Columns.Select(c => $"`{c.Name}` = Values({c.Name})").ToArray())};";
+            var onDuplicateUpdateSql = string.Empty;
+
+            if (onDuplicateUpdate)
+            {
+                onDuplicateUpdateSql = $"ON DUPLICATE KEY UPDATE {String.Join(",", Columns.Select(c => $"`{c.Name}` = Values({c.Name})").ToArray())}";
+            }
+
+            var insert = $"Insert Into {TableName} ({String.Join(",", Columns.Select(c => $"`{c.Name}`").ToArray())}) Values ({String.Join(",", Columns.Select(c => $"@{c.Name}").ToArray())}) {onDuplicateUpdateSql};";
             var cmdInsert = Connector.BuildCommand(insert, GetParameters());
             cmdInsert.Prepare();
             return cmdInsert;
@@ -71,17 +77,50 @@ namespace MySQLCrossServerTransferTool.Models
 
         public override IDbCommand UpdateCommand()
         {
-            throw new System.NotImplementedException();
+            var update = $"Update {TableName} {String.Join(",", Columns.Select(c => $"`{c.Name}` = Values({c.Name})").ToArray())};";
+            var cmdUpdate = Connector.BuildCommand(update, GetParameters());
+            cmdUpdate.Prepare();
+            return cmdUpdate;
         }
 
         public override IDbCommand DeleteCommand()
         {
-            throw new System.NotImplementedException();
+            return Connector.BuildCommand($"DELETE * FROM {TableName};");
+        }
+
+        public override IDbCommand CountCommand()
+        {
+            return Connector.BuildCommand($"SELECT COUNT(*) FROM {TableName};");
+        }
+
+        public override IDbCommand CreateTemporaryTableCommand()
+        {
+            return Connector.BuildCommand($"CREATE TEMPORARY TABLE Temp_{TableName};");
+        }
+
+        public override IDbCommand DropTemporaryTableCommand()
+        {
+            return Connector.BuildCommand($"DROP TEMPORARY TABLE IF EXISTS Temp_{TableName};");
         }
 
         public override DbParameter[] GetParameters()
         {
             return Columns.Select(c => new MySqlParameter(c.Name, (MySqlDbType)c.ProviderType)).ToArray();
+        }
+
+        public override void LoadData(IDbCommand command)
+        {
+            if (DataTable != null)
+            {
+                DataTable.Dispose();
+            }
+
+            DataTable = new DataTable();
+
+            using (var _dataAdapter = new MySqlDataAdapter((MySqlCommand)command))
+            {
+                _dataAdapter.Fill(DataTable);
+            }
         }
     }
 }

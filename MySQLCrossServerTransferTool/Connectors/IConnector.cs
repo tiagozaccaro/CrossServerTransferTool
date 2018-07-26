@@ -12,8 +12,6 @@ namespace MySQLCrossServerTransferTool.Connectors
         void CommitTransaction();
         bool IsOpen();
         bool IsOnTransaction();
-        Table GetTable(string sql, params IDbDataParameter[] parameters);
-        Table GetTable(IDbCommand command);
         IDbCommand BuildCommand(string sql, params IDbDataParameter[] parameters);
         int ExecuteNonQuery(IDbCommand command);
         IDataReader ExecuteReader(IDbCommand command);
