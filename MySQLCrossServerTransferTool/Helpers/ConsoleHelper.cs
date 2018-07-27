@@ -1,9 +1,24 @@
 ﻿using System;
+using System.Drawing;
 
 namespace MySQLCrossServerTransferTool.Extensions
 {
     public static class ConsoleHelper
     {
+        public static void DrawTextProgress(string message, int count, ConsoleColor numberColor = ConsoleColor.Black)
+        {
+            Console.CursorVisible = false;
+            Console.BackgroundColor = ConsoleColor.Black;
+            Console.CursorLeft = 0;
+            Console.Write(message);
+            Console.Write(": ");
+
+            Console.BackgroundColor = numberColor;
+            Console.Write("[");
+            Console.Write(count.ToString());
+            Console.Write("]");         
+        }
+
         public static void DrawTextProgressBar(int progress, int total)
         {
             Console.CursorVisible = false;

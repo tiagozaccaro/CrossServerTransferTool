@@ -26,62 +26,65 @@ namespace MySQLCrossServerTransferTool.Converters
             {
                 var watch = System.Diagnostics.Stopwatch.StartNew();
 
-                using (var from = new MySqlTable(_dbFrom))
+                var from = new MySqlTable(_dbFrom);
+                from.RefreshTableInfo(sql);
+
+                var to = new MySqlTable(from.TableName, _dbTo);
+
+                if (!to.Equals(from))
                 {
-                    from.RefreshTableInfo(sql);
-                    from.LoadData(sql);
-
-                    using (var to = new MySqlTable(from.TableName, _dbTo))
+                    using (var dropTableCommand = to.DropTableCommand())
                     {
-                        if (!to.Equals(from))
+                        dropTableCommand.ExecuteNonQuery();
+                    }
+
+                    using (var createCommand = from.CreateTableCommand())
+                    {
+                        createCommand.Connection = to.Connector.GetConnection();
+                        createCommand.ExecuteNonQuery();
+                    }
+
+                    to.RefreshTableInfo();
+                }
+
+                using (var insertCommand = to.InsertCommand(true))
+                {
+                    _logger.LogInformation($"{from.TableName}");
+
+                    try
+                    {
+                        to.Connector.BeginTransaction();
+
+                        int rows = 0;
+
+                        using (var dr = _dbFrom.ExecuteReader(sql))
                         {
-                            using (var dropTableCommand = to.DropTableCommand())
+                            while (dr.Read())
                             {
-                                dropTableCommand.ExecuteNonQuery();
-                            }
-
-                            using (var createCommand = from.CreateTableCommand())
-                            {
-                                createCommand.Connection = to.Connector.GetConnection();
-                                createCommand.ExecuteNonQuery();
-                            }
-
-                            to.RefreshTableInfo();
-                        }
-
-                        using (var insertCommand = to.InsertCommand(true))
-                        {
-                            _logger.LogInformation($"{from.TableName}");
-
-                            try
-                            {
-                                to.Connector.BeginTransaction();
-
-                                for (int x = 0; x < from.DataTable.Rows.Count; x++)
+                                if (dr.FieldCount == insertCommand.Parameters.Count)
                                 {
-                                    if (from.DataTable.Rows[x].ItemArray.Length == insertCommand.Parameters.Count)
+                                    for (var column = 0; column < dr.FieldCount; column++)
                                     {
-                                        for (var y = 0; y < from.DataTable.Rows[x].ItemArray.Length; y++)
-                                        {
-                                            ((MySqlParameter)insertCommand.Parameters[y]).Value = from.DataTable.Rows[x].ItemArray[y];
-                                        }
-
-                                        ConsoleHelper.DrawTextProgressBar(x + 1, from.DataTable.Rows.Count);
-
-                                        insertCommand.ExecuteNonQuery();
+                                        ((MySqlParameter)insertCommand.Parameters[column]).Value = dr.GetValue(column);
                                     }
+
+                                    ConsoleHelper.DrawTextProgress("Rows transferred", ++rows, ConsoleColor.DarkRed);
+
+                                    insertCommand.ExecuteNonQuery();                                    
                                 }
-
-                                Console.WriteLine();
-
-                                to.Connector.CommitTransaction();
-                            }
-                            catch (Exception ex)
-                            {
-                                to.Connector.RollbackTransaction();
-                                throw new Exception($"Exception on insert into TO Database on Table: {from.TableName}", ex);
                             }
                         }
+
+                        ConsoleHelper.DrawTextProgress("Rows transferred", rows, ConsoleColor.DarkBlue);
+
+                        Console.WriteLine();
+
+                        to.Connector.CommitTransaction();
+                    }
+                    catch (Exception ex)
+                    {
+                        to.Connector.RollbackTransaction();
+                        throw new Exception($"Exception on insert into TO Database on Table: {from.TableName}", ex);
                     }
                 }
 

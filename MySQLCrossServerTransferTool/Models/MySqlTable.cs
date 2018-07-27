@@ -111,20 +111,5 @@ namespace MySQLCrossServerTransferTool.Models
         {
             return Columns.Select(c => new MySqlParameter(c.Name, (MySqlDbType)c.ProviderType)).ToArray();
         }
-
-        public override void LoadData(IDbCommand command)
-        {
-            if (DataTable != null)
-            {
-                DataTable.Dispose();
-            }
-
-            DataTable = new DataTable();
-            
-            using (var _dataAdapter = new MySqlDataAdapter((MySqlCommand)command))
-            {
-                _dataAdapter.Fill(DataTable);
-            }
-        }
     }
 }

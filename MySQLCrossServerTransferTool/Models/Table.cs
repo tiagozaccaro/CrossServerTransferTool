@@ -7,12 +7,11 @@ using MySQLCrossServerTransferTool.Connectors;
 
 namespace MySQLCrossServerTransferTool.Models
 {
-    public abstract class Table : ITableCommands, IDisposable, IEquatable<Table>
+    public abstract class Table : ITableCommands, IEquatable<Table>
     {
         public string TableName { get; set; }
         public Column[] Columns { get; set; }
         public IConnector Connector { get; set; }
-        public DataTable DataTable { get; set; }
 
         public Table(IConnector connector)
         {
@@ -63,16 +62,6 @@ namespace MySQLCrossServerTransferTool.Models
             RefreshTableInfo();
         }
 
-        public abstract void LoadData(IDbCommand command);
-
-        public void LoadData(string sql)
-        {
-            using (var selectCommand = Connector.BuildCommand(sql))
-            {
-                LoadData(selectCommand);
-            }
-        }
-
         private Column[] ConvertToColumns(DataRowCollection rows)
         {
             var columns = new Column[rows.Count];
@@ -83,14 +72,6 @@ namespace MySQLCrossServerTransferTool.Models
             }
 
             return columns;
-        }
-
-        public void Dispose()
-        {
-            if (DataTable != null)
-            {
-                DataTable.Dispose();
-            }
         }
 
         public bool Equals(Table other)
