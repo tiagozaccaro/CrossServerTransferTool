@@ -8,8 +8,12 @@ using System;
 namespace MySQLCrossServerTransferTool.Models
 {
     public class MySqlTable : Table
-    {        
-        public MySqlTable(string sql, IConnector connector, bool IsSql) : base(sql, connector, IsSql)
+    {
+        public MySqlTable(IConnector connector) : base(connector)
+        {
+        }
+
+        public MySqlTable(string tableName, IConnector connector) : base(tableName, connector)
         {
         }
 
@@ -116,7 +120,7 @@ namespace MySQLCrossServerTransferTool.Models
             }
 
             DataTable = new DataTable();
-
+            
             using (var _dataAdapter = new MySqlDataAdapter((MySqlCommand)command))
             {
                 _dataAdapter.Fill(DataTable);

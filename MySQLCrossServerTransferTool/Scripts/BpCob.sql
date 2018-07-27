@@ -28,7 +28,6 @@ DELETE c.* FROM `caddadosbradescoconsorcio` c INNER JOIN mytempdb.`temp_BpCob` U
 DELETE c.* FROM `caddadosbv` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 DELETE c.* FROM `caddadosnextel` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 DELETE c.* FROM `caddadospanimobiliario` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
-DELETE c.* FROM `caddadosparcelavolvo` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 DELETE c.* FROM `caddadosprocessobradescovarejo` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 DELETE c.* FROM `caddadosrecovery` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 DELETE c.* FROM `caddadossancor` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
@@ -70,7 +69,6 @@ SELECT c.* FROM `caddadosbradescoconsorcio` c INNER JOIN mytempdb.`temp_BpCob` U
 SELECT c.* FROM `caddadosbv` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 SELECT c.* FROM `caddadosnextel` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 SELECT c.* FROM `caddadospanimobiliario` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
-SELECT c.* FROM `caddadosparcelavolvo` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 SELECT c.* FROM `caddadosprocessobradescovarejo` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 SELECT c.* FROM `caddadosrecovery` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);
 SELECT c.* FROM `caddadossancor` c INNER JOIN mytempdb.`temp_BpCob` USING (cdContrato);

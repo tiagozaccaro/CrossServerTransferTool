@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
-using MySQLCrossServerTransferTool.Models;
 using System;
 using System.Data;
 

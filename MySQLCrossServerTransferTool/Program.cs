@@ -35,7 +35,7 @@ namespace MySQLCrossServerTransferTool
             var scriptParser = ServiceProvider.GetService<ScriptParserFactory>().GetInstance(_logger);
             scriptParser.ExecuteScript();
 
-            _logger.LogInformation("All done!");                        
+            _logger.LogInformation("All done!");
         }
 
         private static void ConfigureServices(IServiceCollection serviceCollection, ProgramOptions options)
