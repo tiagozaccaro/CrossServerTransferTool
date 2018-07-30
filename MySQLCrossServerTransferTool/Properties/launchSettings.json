@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "MySQLCrossServerTransferTool": {
-      "commandName": "Project",
-      "commandLineArgs": "--from \"server=192.168.200.12;port=33306;database=bpCob;Connection Lifetime=0;Pooling=false;Connection Timeout=999999; Encrypt=false;user=usr_tiago;pwd=t3d@S12ehd;Allow Zero Datetime = true;\" --to \"server=192.168.200.134;port=33306;database=BpCob;Connection Lifetime=0;Pooling=false;Encrypt=false;Connection Timeout=999999;user=usr_tiago;pwd=t3d@S12ehd;Allow Zero Datetime = true;\" --script \"Scripts\\BpCob.sql\""
-    }
-  }
-}
