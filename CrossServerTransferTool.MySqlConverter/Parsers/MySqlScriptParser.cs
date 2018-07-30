@@ -6,64 +6,27 @@ using CrossServerTransferTool.MySqlConverter.Connectors;
 using CrossServerTransferTool.SharedKernel.Parsers;
 using CrossServerTransferTool.SharedKernel.Models;
 using CrossServerTransferTool.SharedKernel.Plugins;
+using CrossServerTransferTool.SharedKernel.Connectors;
 
 namespace CrossServerTransferTool.MySqlConverter.Parsers
 {
     [PluginName("MySql")]
-    public class MySqlScriptParser : IScriptParser
+    public class MySqlScriptParser : ScriptParser
     {
-        private readonly ProgramOptions _options;
-        private readonly ILogger _logger;
-
-        public MySqlScriptParser(ProgramOptions options, ILoggerFactory loggerFactory)
+        public MySqlScriptParser(ProgramOptions options, ILoggerFactory loggerFactory) : base(options, loggerFactory)
         {
-            _options = options;
-            _logger = loggerFactory.CreateLogger<MySqlScriptParser>();
         }
 
-        public void ExecuteScript()
+        public override IConnector GetConnector(string connectionString, ILogger logger)
         {
-            _logger.LogInformation("Start Copying Data...");
-            _logger.LogInformation($"Script Name: {Path.GetFileName(_options.ScriptFile)}");
-
-            using (var dbFrom = new MySqlConnector(_options.FromConnectionString, _logger))
-            {
-                using (var dbTo = new MySqlConnector(_options.ToConnectionString, _logger))
-                {
-                    try
-                    {
-                        var watch = System.Diagnostics.Stopwatch.StartNew();
-
-                        dbFrom.Open();
-                        dbTo.Open();
-
-                        ExecuteScriptFile(dbFrom, dbTo);
-                        
-                        // the code that you want to measure comes here
-                        watch.Stop();
-                        TimeSpan t = TimeSpan.FromMilliseconds(watch.ElapsedMilliseconds);
-                        string answer = string.Format("{0:D2}h:{1:D2}m:{2:D2}s:{3:D3}ms",
-                                                t.Hours,
-                                                t.Minutes,
-                                                t.Seconds,
-                                                t.Milliseconds);
-
-                        _logger.LogDebug($"Time Elapsed: {answer}");
-                    }
-                    catch (Exception ex)
-                    {                        
-                        _logger.LogError(ex, "Error on the execution.");
-                        Console.ReadKey();
-                    }
-                }
-            }
+            return new MySqlConnector(connectionString, Logger);
         }
 
-        private void ExecuteScriptFile(MySqlConnector dbFrom, MySqlConnector dbTo)
-        {
+        public override void ParseScript(IConnector dbFrom, IConnector dbTo)
+        { 
             var dbExecution = dbFrom;
 
-            var scripts = File.ReadAllText(_options.ScriptFile).Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            var scripts = File.ReadAllText(GetScriptFile).Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
 
             foreach (var script in scripts)
             {
@@ -79,7 +42,7 @@ namespace CrossServerTransferTool.MySqlConverter.Parsers
                     switch(method.Name)
                     {
                         case "PRINT":
-                            _logger.LogInformation(method.Parameters[0].Replace("\'", "").Replace("\"", ""));
+                            Logger.LogInformation(method.Parameters[0].Replace("\'", "").Replace("\"", ""));
 
                             continue;
                         case "EXECON":
@@ -87,17 +50,16 @@ namespace CrossServerTransferTool.MySqlConverter.Parsers
                             {
                                 case "'FROMDB'":
                                     dbExecution = dbFrom;
-                                    _logger.LogInformation($"Executing database changed to: FROMDB");
+                                    Logger.LogInformation($"Executing database changed to: FROMDB");
                                     break;
                                 case "'TODB'":
                                     dbExecution = dbTo;
-                                    _logger.LogInformation($"Executing database changed to: TODB");
+                                    Logger.LogInformation($"Executing database changed to: TODB");
                                     break;
                             }
 
                             continue;
                         case "FOREACH":
-
                             using (var dr = dbExecution.ExecuteReader(method.Parameters[0].Replace("\'", "").Replace("\"", "")))
                             {
                                 using (var dt = new DataTable())
@@ -119,7 +81,7 @@ namespace CrossServerTransferTool.MySqlConverter.Parsers
                 {
                     var watch = System.Diagnostics.Stopwatch.StartNew();
 
-                    var converter = new Converters.MySqlConverter(dbFrom, dbTo, _logger);
+                    var converter = new Converters.MySqlConverter(dbFrom, dbTo, Logger);
                     converter.Convert(line);
                     
                     watch.Stop();
@@ -130,7 +92,7 @@ namespace CrossServerTransferTool.MySqlConverter.Parsers
                                             t.Seconds,
                                             t.Milliseconds);
 
-                    _logger.LogInformation($"Execution Time Elapsed: {answer}");
+                    Logger.LogInformation($"Execution Time Elapsed: {answer}");
                 }  
                 else
                 {                    

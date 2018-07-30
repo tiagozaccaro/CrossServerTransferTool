@@ -45,7 +45,7 @@ namespace CrossServerTransferTool
 
             serviceCollection.AddSingleton(_logger);
 
-            ((IScriptParser)ServiceProvider.GetService(scriptParser)).ExecuteScript();
+            ((ScriptParser)ServiceProvider.GetService(scriptParser)).ExecuteScript();
 
             _logger.LogInformation("All done!");
         }

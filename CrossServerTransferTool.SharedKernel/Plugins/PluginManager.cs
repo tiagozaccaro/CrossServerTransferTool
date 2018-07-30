@@ -35,11 +35,9 @@ namespace CrossServerTransferTool.SharedKernel.Plugins
             var availableTypes = new List<Type>();
             GetPluginAssemblies().ForEach(p => availableTypes.AddRange(p.GetTypes()));              
             
-            _plugins = availableTypes.FindAll(delegate(Type t) {
-                List<Type> interfaceTypes = new List<Type>(t.GetInterfaces());
+            _plugins = availableTypes.FindAll(delegate(Type t) {                
                 object[] arr = t.GetCustomAttributes(typeof(PluginNameAttribute), true);
-
-                return !(arr == null || arr.Length == 0) && interfaceTypes.Contains(typeof(IScriptParser));
+                return !(arr == null || arr.Length == 0);
             });
         }
 

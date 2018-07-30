@@ -5,9 +5,9 @@ VisualStudioVersion = 15.0.27703.2035
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CrossServerTransferTool", "CrossServerTransferTool\CrossServerTransferTool.csproj", "{3CC3C284-626D-4322-9FB2-023FF0CA7729}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrossServerTransferTool.MySqlConverter", "CrossServerTransferTool.MySqlConverter\CrossServerTransferTool.MySqlConverter.csproj", "{2171A9C2-0A37-4CAD-9A82-13A7E8720498}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CrossServerTransferTool.MySqlConverter", "CrossServerTransferTool.MySqlConverter\CrossServerTransferTool.MySqlConverter.csproj", "{2171A9C2-0A37-4CAD-9A82-13A7E8720498}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrossServerTransferTool.SharedKernel", "CrossServerTransferTool.SharedKernel\CrossServerTransferTool.SharedKernel.csproj", "{24892357-AA51-46A7-B64C-8E99A527EDDB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CrossServerTransferTool.SharedKernel", "CrossServerTransferTool.SharedKernel\CrossServerTransferTool.SharedKernel.csproj", "{24892357-AA51-46A7-B64C-8E99A527EDDB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

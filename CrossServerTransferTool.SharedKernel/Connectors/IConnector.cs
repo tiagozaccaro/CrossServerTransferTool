@@ -1,9 +1,9 @@
-﻿using CrossServerTransferTool.SharedKernel.Models;
+﻿using System;
 using System.Data;
 
 namespace CrossServerTransferTool.SharedKernel.Connectors
 {
-    public interface IConnector
+    public interface IConnector : IDisposable
     {
         IDbConnection GetConnection();
         void Open();
